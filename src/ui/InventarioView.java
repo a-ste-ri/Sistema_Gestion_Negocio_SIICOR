@@ -11,6 +11,10 @@ import services.ProductoService;
 import javax.swing.DefaultListModel;
 import javax.swing.JList;
 import javax.swing.JScrollPane;
+import java.awt.Color;
+import java.awt.Component;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.JTable;
 
 public class InventarioView extends javax.swing.JFrame {
     
@@ -24,8 +28,6 @@ private void mantenerConfiguracionTabla() {
     // evitar que se pierda el diseño al recargar/buscar
     tablaProductos.getTableHeader().setReorderingAllowed(false);
     tablaProductos.getTableHeader().setResizingAllowed(false);
-    
-
 
     tablaProductos.setRowHeight(25);
 
@@ -33,6 +35,37 @@ private void mantenerConfiguracionTabla() {
     tablaProductos.getColumnModel().getColumn(2).setPreferredWidth(220);
     tablaProductos.getColumnModel().getColumn(3).setPreferredWidth(80);
     tablaProductos.getColumnModel().getColumn(4).setPreferredWidth(80);
+    
+    // aplicar color al stock (columna 4)
+    tablaProductos.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if (value != null) {
+                try {
+                    int stock = Integer.parseInt(value.toString());
+                    if (stock < 10) {
+                        c.setBackground(new Color(255, 150, 150)); // Rojo suave
+                        c.setForeground(Color.BLACK);
+                    } else if (stock >= 10 && stock <= 19) {
+                        c.setBackground(new Color(255, 230, 150)); // Amarillo suave
+                        c.setForeground(Color.BLACK);
+                    } else {
+                        c.setBackground(new Color(170, 240, 170)); // Verde suave
+                        c.setForeground(Color.BLACK);
+                    }
+                } catch (NumberFormatException e) {
+                    c.setBackground(table.getBackground());
+                    c.setForeground(table.getForeground());
+                }
+            }
+            if (isSelected) {
+                c.setBackground(table.getSelectionBackground());
+                c.setForeground(table.getSelectionForeground());
+            }
+            return c;
+        }
+    });
 
     // ocultar ID (IMPORTANTE REAPLICARLO SIEMPRE)
     tablaProductos.getColumnModel().getColumn(1).setMinWidth(0);

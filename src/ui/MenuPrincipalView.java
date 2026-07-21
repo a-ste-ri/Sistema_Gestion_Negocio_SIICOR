@@ -7,6 +7,10 @@ package ui;
 
 import ui.InventarioView;
 import ui.FallasView;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import javax.swing.JOptionPane;
 
 /**
  *

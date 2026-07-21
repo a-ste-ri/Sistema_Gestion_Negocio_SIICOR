@@ -23,6 +23,7 @@ public class ProductoService {
 
     } catch (Exception e) {
         e.printStackTrace();
+        throw new RuntimeException(e.getMessage());
     } finally {
         try {
             if (conn != null) conn.close();
@@ -53,6 +54,7 @@ public class ProductoService {
 
     } catch (Exception e) {
         e.printStackTrace();
+        throw new RuntimeException(e.getMessage());
     } finally {
         try {
             if (ps != null) ps.close();
@@ -81,7 +83,7 @@ public class ProductoService {
     } catch (Exception e) {
         e.printStackTrace();
     } finally {
-        try {
+        try{
             if (ps != null) ps.close();
             if (conn != null) conn.close();
         } catch (Exception e) {

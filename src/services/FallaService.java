@@ -22,6 +22,7 @@ public class FallaService {
 
         } catch (Exception e) {
             e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
         } finally {
             try {
                 if (ps != null) ps.close();
