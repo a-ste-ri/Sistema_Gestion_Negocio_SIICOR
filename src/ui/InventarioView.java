@@ -25,119 +25,224 @@ public class InventarioView extends javax.swing.JFrame {
     
 private void mantenerConfiguracionTabla() {
 
-    // evitar que se pierda el diseño al recargar/buscar
-    tablaProductos.getTableHeader().setReorderingAllowed(false);
-    tablaProductos.getTableHeader().setResizingAllowed(false);
+// Evitar que se pierda el diseño al recargar/buscar
+tablaProductos.getTableHeader().setReorderingAllowed(false);
+tablaProductos.getTableHeader().setResizingAllowed(false);
 
-    tablaProductos.setRowHeight(25);
+tablaProductos.setRowHeight(25);
 
-    tablaProductos.getColumnModel().getColumn(0).setPreferredWidth(40);
-    tablaProductos.getColumnModel().getColumn(2).setPreferredWidth(220);
-    tablaProductos.getColumnModel().getColumn(3).setPreferredWidth(80);
-    tablaProductos.getColumnModel().getColumn(4).setPreferredWidth(80);
-    
-    // aplicar color al stock (columna 4)
-    tablaProductos.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
+// Tamaños de columnas
+tablaProductos.getColumnModel().getColumn(0).setPreferredWidth(40);
+tablaProductos.getColumnModel().getColumn(2).setPreferredWidth(180);
+tablaProductos.getColumnModel().getColumn(3).setPreferredWidth(100);
+tablaProductos.getColumnModel().getColumn(4).setPreferredWidth(100);
+tablaProductos.getColumnModel().getColumn(5).setPreferredWidth(80);
+
+// ==========================================
+// SEMÁFORO DE STOCK
+// ==========================================
+
+tablaProductos.getColumnModel().getColumn(5).setCellRenderer(
+    new DefaultTableCellRenderer() {
+
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+        public Component getTableCellRendererComponent(
+                JTable table,
+                Object value,
+                boolean isSelected,
+                boolean hasFocus,
+                int row,
+                int column) {
+
+            Component c = super.getTableCellRendererComponent(
+                table,
+                value,
+                isSelected,
+                hasFocus,
+                row,
+                column
+            );
+
             if (value != null) {
+
                 try {
+
                     int stock = Integer.parseInt(value.toString());
+
                     if (stock < 10) {
-                        c.setBackground(new Color(255, 150, 150)); // Rojo suave
+
+                        // 🔴 STOCK BAJO
+                        c.setBackground(new Color(255, 150, 150));
                         c.setForeground(Color.BLACK);
+
                     } else if (stock >= 10 && stock <= 19) {
-                        c.setBackground(new Color(255, 230, 150)); // Amarillo suave
+
+                        // 🟡 STOCK MEDIO
+                        c.setBackground(new Color(255, 230, 150));
                         c.setForeground(Color.BLACK);
+
                     } else {
-                        c.setBackground(new Color(170, 240, 170)); // Verde suave
+
+                        // 🟢 STOCK SUFICIENTE
+                        c.setBackground(new Color(170, 240, 170));
                         c.setForeground(Color.BLACK);
                     }
+
                 } catch (NumberFormatException e) {
+
                     c.setBackground(table.getBackground());
                     c.setForeground(table.getForeground());
                 }
             }
+
+            // Mantener selección de la fila
             if (isSelected) {
+
                 c.setBackground(table.getSelectionBackground());
                 c.setForeground(table.getSelectionForeground());
             }
+
             return c;
         }
-    });
+    }
+);
 
-    // ocultar ID (IMPORTANTE REAPLICARLO SIEMPRE)
-    tablaProductos.getColumnModel().getColumn(1).setMinWidth(0);
-    tablaProductos.getColumnModel().getColumn(1).setMaxWidth(0);
-    tablaProductos.getColumnModel().getColumn(1).setWidth(0);
+// ==========================================
+// OCULTAR ID REAL
+// ==========================================
+
+tablaProductos.getColumnModel().getColumn(1).setMinWidth(0);
+tablaProductos.getColumnModel().getColumn(1).setMaxWidth(0);
+tablaProductos.getColumnModel().getColumn(1).setWidth(0);
+
 }
+
         
 public void cargarProductos() {
 
-    Connection conn = null;
-    PreparedStatement ps = null;
-    ResultSet rs = null;
+Connection conn = null;
+PreparedStatement ps = null;
+ResultSet rs = null;
+
+try {
+
+    conn = Conexion.conectar();
+
+    String sql = "SELECT * FROM productos ORDER BY nombre ASC";
+
+    ps = conn.prepareStatement(sql);
+    rs = ps.executeQuery();
+
+    DefaultTableModel modelo = new DefaultTableModel(
+        new Object[]{
+            "#",
+            "ID",
+            "Nombre",
+            "Precio Compra",
+            "Precio Venta",
+            "Stock"
+        }, 0
+    ) {
+
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+
+    int contador = 1;
+
+    while (rs.next()) {
+
+        modelo.addRow(new Object[]{
+        contador++,
+        rs.getInt("id"),
+        rs.getString("nombre"),
+        rs.getDouble("precio_compra"),
+        rs.getDouble("precio"),
+        rs.getInt("stock")
+    });
+    }
+
+    tablaProductos.setModel(modelo);
+
+    mantenerConfiguracionTabla();
+
+} catch (Exception e) {
+
+    e.printStackTrace();
+
+    JOptionPane.showMessageDialog(
+        this,
+        "Error al cargar productos: " + e.getMessage()
+    );
+
+} finally {
 
     try {
-        conn = Conexion.conectar();
 
-        String sql = "SELECT * FROM productos ORDER BY nombre ASC";
-        ps = conn.prepareStatement(sql);
-        rs = ps.executeQuery();
-
-        DefaultTableModel modelo = new DefaultTableModel(
-            new Object[]{"#", "ID", "Nombre", "Precio", "Stock"}, 0
-        ) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false; // 🔒 BLOQUEAR EDICIÓN
-            }
-        };
-
-        int contador = 1;
-
-        while (rs.next()) {
-            modelo.addRow(new Object[]{
-                contador++, // 👈 ID VISUAL
-                rs.getInt("id"),
-                rs.getString("nombre"),
-                rs.getDouble("precio"),
-                rs.getInt("stock")
-            });
-        }
-
-        tablaProductos.setModel(modelo);
-
-        // 👇 ocultar ID real (columna 1)
-        tablaProductos.getColumnModel().getColumn(1).setMinWidth(0);
-        tablaProductos.getColumnModel().getColumn(1).setMaxWidth(0);
-        tablaProductos.getColumnModel().getColumn(1).setWidth(0);
+        if (rs != null) rs.close();
+        if (ps != null) ps.close();
+        if (conn != null) conn.close();
 
     } catch (Exception e) {
+
         e.printStackTrace();
     }
 }
+
+}
+
 private boolean validarCampos() {
 
-    if (txtNombre.getText().trim().isEmpty() ||
-        txtPrecio.getText().trim().isEmpty() ||
-        txtStock.getText().trim().isEmpty()) {
+if (txtNombre.getText().trim().isEmpty() ||
+    txtPrecioCompra.getText().trim().isEmpty() ||
+    txtPrecio.getText().trim().isEmpty() ||
+    txtStock.getText().trim().isEmpty()) {
 
-        JOptionPane.showMessageDialog(this, "Complete todos los campos");
-        return false;
-    }
+    JOptionPane.showMessageDialog(
+        this,
+        "Complete todos los campos"
+    );
 
-    try {
-        Double.parseDouble(txtPrecio.getText());
-        Integer.parseInt(txtStock.getText());
-    } catch (NumberFormatException e) {
-        JOptionPane.showMessageDialog(this, "Precio o stock inválido");
-        return false;
-    }
-
-    return true;
+    return false;
 }
+
+try {
+
+    double precioCompra =
+        Double.parseDouble(txtPrecioCompra.getText().trim());
+
+    double precioVenta =
+        Double.parseDouble(txtPrecio.getText().trim());
+
+    int stock =
+        Integer.parseInt(txtStock.getText().trim());
+
+    if (precioCompra < 0 || precioVenta < 0 || stock < 0) {
+
+        JOptionPane.showMessageDialog(
+            this,
+            "Los valores no pueden ser negativos"
+        );
+
+        return false;
+    }
+
+} catch (NumberFormatException e) {
+
+    JOptionPane.showMessageDialog(
+        this,
+        "Precio o stock inválido"
+    );
+
+    return false;
+}
+
+return true;
+
+}
+
 private void buscarProductos(String texto) {
 
     Connection conn = null;
@@ -155,7 +260,14 @@ private void buscarProductos(String texto) {
         rs = ps.executeQuery();
 
         DefaultTableModel modelo = new DefaultTableModel(
-            new Object[]{"#", "ID", "Nombre", "Precio", "Stock"}, 0
+            new Object[]{
+                    "#",
+                    "ID",
+                    "Nombre",
+                    "Precio Compra",
+                    "Precio Venta",
+                    "Stock"
+                }, 0
         ) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -324,9 +436,22 @@ tablaProductos.addMouseListener(new java.awt.event.MouseAdapter() {
         int fila = tablaProductos.getSelectedRow();
 
         if (fila != -1) {
-            txtNombre.setText(tablaProductos.getValueAt(fila, 2).toString());
-            txtPrecio.setText(tablaProductos.getValueAt(fila, 3).toString());
-            txtStock.setText(tablaProductos.getValueAt(fila, 4).toString());
+           txtNombre.setText(
+tablaProductos.getValueAt(fila, 2).toString()
+);
+
+txtPrecioCompra.setText(
+tablaProductos.getValueAt(fila, 3).toString()
+);
+
+txtPrecio.setText(
+tablaProductos.getValueAt(fila, 4).toString()
+);
+
+txtStock.setText(
+tablaProductos.getValueAt(fila, 5).toString()
+);
+
         }
     }
 });
@@ -356,6 +481,8 @@ tablaProductos.addMouseListener(new java.awt.event.MouseAdapter() {
         jLabel3 = new javax.swing.JLabel();
         bntAtras = new javax.swing.JButton();
         txtBuscar = new javax.swing.JTextField();
+        txtPrecioCompra = new javax.swing.JTextField();
+        jLabel4 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
@@ -432,9 +559,9 @@ tablaProductos.addMouseListener(new java.awt.event.MouseAdapter() {
             }
         });
 
-        jLabel1.setText("NOMBRE");
+        jLabel1.setText("NOMBRE PRODUCTO");
 
-        jLabel2.setText("PRECIO");
+        jLabel2.setText("PRECIO VENTA");
 
         jLabel3.setText("STOCK");
 
@@ -459,6 +586,15 @@ tablaProductos.addMouseListener(new java.awt.event.MouseAdapter() {
             }
         });
 
+        txtPrecioCompra.setText("$");
+        txtPrecioCompra.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtPrecioCompraActionPerformed(evt);
+            }
+        });
+
+        jLabel4.setText("PRECIO COMPRA");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -466,40 +602,47 @@ tablaProductos.addMouseListener(new java.awt.event.MouseAdapter() {
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                        .addComponent(btnActualizar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(btnGuardar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addComponent(txtNombre, javax.swing.GroupLayout.PREFERRED_SIZE, 156, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel2)
                     .addComponent(jLabel1)
                     .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 42, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                        .addComponent(txtStock, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 62, Short.MAX_VALUE)
-                        .addComponent(txtPrecio, javax.swing.GroupLayout.Alignment.LEADING))
                     .addComponent(bntAtras)
-                    .addComponent(btnEliminar, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
+                    .addComponent(txtStock, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                        .addComponent(btnEliminar, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(btnActualizar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(btnGuardar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(txtNombre, javax.swing.GroupLayout.PREFERRED_SIZE, 228, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel2)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                        .addComponent(txtPrecio, javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(jLabel4, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(txtPrecioCompra, javax.swing.GroupLayout.Alignment.LEADING)))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 24, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jScrollPane1)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 419, Short.MAX_VALUE)
                     .addComponent(txtBuscar))
-                .addContainerGap(49, Short.MAX_VALUE))
+                .addGap(19, 19, 19))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(26, 26, 26)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(bntAtras))
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(bntAtras)
-                        .addGap(33, 33, 33))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)))
-                .addComponent(jLabel1)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGap(38, 38, 38)
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap(13, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(jLabel1)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(txtNombre, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(jLabel4)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(txtPrecioCompra, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(18, 18, 18)
                         .addComponent(jLabel2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -508,14 +651,13 @@ tablaProductos.addMouseListener(new java.awt.event.MouseAdapter() {
                         .addComponent(jLabel3)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(txtStock, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(33, 33, 33)
+                        .addGap(59, 59, 59)
                         .addComponent(btnGuardar)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(btnActualizar)
-                        .addGap(18, 18, 18)
-                        .addComponent(btnEliminar))
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(12, Short.MAX_VALUE))
+                        .addGap(23, 23, 23)
+                        .addComponent(btnEliminar)
+                        .addGap(80, 80, 80))))
         );
 
         pack();
@@ -531,42 +673,59 @@ tablaProductos.addMouseListener(new java.awt.event.MouseAdapter() {
 
     private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarActionPerformed
 
-    try {
-        // 1. Validar campos vacíos
-        if (txtNombre.getText().trim().isEmpty() ||
-            txtPrecio.getText().trim().isEmpty() ||
-            txtStock.getText().trim().isEmpty()) {
+if (!validarCampos()) {
+    return;
+}
 
-            JOptionPane.showMessageDialog(this, "Complete todos los campos");
-            return;
-        }
+try {
 
-        // 2. Convertir datos
-        String nombre = txtNombre.getText();
-        double precio = Double.parseDouble(txtPrecio.getText());
-        int stock = Integer.parseInt(txtStock.getText());
+    String nombre = txtNombre.getText().trim();
 
-        // 3. Llamar al servicio
-        ProductoService ps = new ProductoService();
-        ps.insertar(nombre, precio, stock);
+    double precioCompra =
+        Double.parseDouble(txtPrecioCompra.getText().trim());
 
-        // 4. Mensaje
-        JOptionPane.showMessageDialog(this, "Producto guardado");
+    double precioVenta =
+        Double.parseDouble(txtPrecio.getText().trim());
 
-        // 5. Recargar tabla
-        cargarProductos();
-        mantenerConfiguracionTabla();
+    int stock =
+        Integer.parseInt(txtStock.getText().trim());
 
-        // 6. Limpiar campos
-        txtNombre.setText("");
-        txtPrecio.setText("");
-        txtStock.setText("");
+    ProductoService ps = new ProductoService();
 
-    } catch (NumberFormatException e) {
-        JOptionPane.showMessageDialog(this, "Precio o stock inválido");
-    } catch (Exception e) {
-        JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
-    }
+    ps.insertar(
+        nombre,
+        precioCompra,
+        precioVenta,
+        stock
+    );
+
+    JOptionPane.showMessageDialog(
+        this,
+        "Producto guardado correctamente"
+    );
+
+    cargarProductos();
+
+    // Limpiar campos
+    txtNombre.setText("");
+    txtPrecioCompra.setText("");
+    txtPrecio.setText("");
+    txtStock.setText("");
+
+} catch (NumberFormatException e) {
+
+    JOptionPane.showMessageDialog(
+        this,
+        "Precio o stock inválido"
+    );
+
+} catch (Exception e) {
+
+    JOptionPane.showMessageDialog(
+        this,
+        "Error: " + e.getMessage()
+    );
+}
 
 
 // TODO add your handling code here:
@@ -575,34 +734,71 @@ tablaProductos.addMouseListener(new java.awt.event.MouseAdapter() {
     private void btnActualizarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnActualizarActionPerformed
 
     // 🔒 VALIDACIÓN AQUÍ (al inicio)
-    if (tablaProductos.getSelectedRow() == -1) {
-        javax.swing.JOptionPane.showMessageDialog(this, "Seleccione un producto");
-        return;
-    }
-    if (!validarCampos()) return;
+if (tablaProductos.getSelectedRow() == -1) {
 
+    JOptionPane.showMessageDialog(
+        this,
+        "Seleccione un producto"
+    );
 
-    try {
-        int fila = tablaProductos.getSelectedRow();
-        int id = Integer.parseInt(tablaProductos.getValueAt(fila, 1).toString());
+    return;
+}
 
-        String nombre = txtNombre.getText();
-        double precio = Double.parseDouble(txtPrecio.getText());
-        int stock = Integer.parseInt(txtStock.getText());
+if (!validarCampos()) {
+    return;
+}
 
-        ProductoService ps = new ProductoService();
-        ps.actualizar(id, nombre, precio, stock);
-        txtNombre.setText("");
-txtPrecio.setText("");
-txtStock.setText("");
+try {
 
-        cargarProductos();
-        mantenerConfiguracionTabla();
-        tablaProductos.clearSelection();
+    int fila = tablaProductos.getSelectedRow();
 
-    } catch (Exception e) {
-        javax.swing.JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
-    }
+    int id = Integer.parseInt(
+        tablaProductos.getValueAt(fila, 1).toString()
+    );
+
+    String nombre =
+        txtNombre.getText().trim();
+
+    double precioCompra =
+        Double.parseDouble(txtPrecioCompra.getText().trim());
+
+    double precioVenta =
+        Double.parseDouble(txtPrecio.getText().trim());
+
+    int stock =
+        Integer.parseInt(txtStock.getText().trim());
+
+    ProductoService ps = new ProductoService();
+
+    ps.actualizar(
+        id,
+        nombre,
+        precioCompra,
+        precioVenta,
+        stock
+    );
+
+    JOptionPane.showMessageDialog(
+        this,
+        "Producto actualizado correctamente"
+    );
+
+    txtNombre.setText("");
+    txtPrecioCompra.setText("");
+    txtPrecio.setText("");
+    txtStock.setText("");
+
+    cargarProductos();
+
+    tablaProductos.clearSelection();
+
+} catch (Exception e) {
+
+    JOptionPane.showMessageDialog(
+        this,
+        "Error: " + e.getMessage()
+    );
+}
 
      // TODO add your handling code here:
     }//GEN-LAST:event_btnActualizarActionPerformed
@@ -726,6 +922,10 @@ txtStock.setText("");
   // TODO add your handling code here:
     }//GEN-LAST:event_txtBuscarKeyPressed
 
+    private void txtPrecioCompraActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtPrecioCompraActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_txtPrecioCompraActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -769,11 +969,13 @@ txtStock.setText("");
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTable tablaProductos;
     private javax.swing.JTextField txtBuscar;
     private javax.swing.JTextField txtNombre;
     private javax.swing.JTextField txtPrecio;
+    private javax.swing.JTextField txtPrecioCompra;
     private javax.swing.JTextField txtStock;
     // End of variables declaration//GEN-END:variables
 }
